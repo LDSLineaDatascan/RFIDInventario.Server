@@ -22,6 +22,28 @@ namespace RFIDInventario.Server.Controllers
         {
             try
             {
+
+                //validadcion de entrada
+                if(string.IsNullOrWhiteSpace(request.Tag) || string.IsNullOrWhiteSpace(request.Ean))
+                {
+                    return BadRequest(new { Message = "Tag y EAN son obligatorios." });
+                }
+
+                //valido estado de la tienda
+                var estado= await _context.Tiendas
+                    .Where(t => t.Codigo == idTienda)
+                    .Select(t => t.Estado)
+                    .FirstOrDefaultAsync();
+
+                if(!string.IsNullOrEmpty(estado) &&
+                    (estado.Equals("Cerrar", StringComparison.OrdinalIgnoreCase) ||
+                    estado.Equals("Cerrado", StringComparison.OrdinalIgnoreCase)))
+                    {
+                    //rechazo la escritura
+                        return StatusCode(423, new { mensaje = "Tienda cerrada: no se permiten lecturas." });
+                    }
+
+
                 await _context.Database.ExecuteSqlRawAsync(
                     "EXEC INSERTAR_TAG_ACTUALIZADO_INVENTARIO @ID_TIENDA, @TAG, @EAN",
                     new SqlParameter("@ID_TIENDA", idTienda),

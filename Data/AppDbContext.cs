@@ -11,8 +11,11 @@ namespace RFIDInventario.Server.Data
         public DbSet<Inventario> InventarioTeorico { get; set; }
         public DbSet<InventarioFisico> InventarioFisico { get; set; }
         public DbSet<TagTienda> TagTienda { get; set; }
+        public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<UsuariosTiendas> UsuariosTiendas { get; set; }
 
-        
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

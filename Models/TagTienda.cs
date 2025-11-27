@@ -15,7 +15,6 @@ namespace RFIDInventario.Server.Models
         public required string Tag { get; set; }
         public required string Ean { get; set; }
         public required DateTime Fecha { get; set; }
-
         public TagTienda() { }
         public TagTienda(string idTienda, string tag, string ean, DateTime fecha)
         {

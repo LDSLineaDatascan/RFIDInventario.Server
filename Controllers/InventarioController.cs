@@ -123,7 +123,7 @@ namespace RFIDInventario.Server.Controllers
         }
 
 
-        [HttpGet("detalleCategoria/{idTienda}/{categoria}")]
+        /*[HttpGet("detalleCategoria/{idTienda}/{categoria}")]
         public async Task<IActionResult> GetDetalleCategoria(string idTienda, string categoria)
         {
             var query = from inv in _context.InventarioTeorico
@@ -148,7 +148,73 @@ namespace RFIDInventario.Server.Controllers
             var productos = await query.ToListAsync();
 
             return Ok(productos);
+        }*/
+
+        [HttpGet("detalleCategoria/{idTienda}/{categoria}")]
+        public async Task<IActionResult> GetDetalleCategoria(string idTienda, string categoria)
+        {
+            // 1️⃣ Productos teóricos (con stock físico inicial 0)
+            var teoricoQuery = from inv in _context.InventarioTeorico
+                               where inv.IdTienda == idTienda
+                               join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                               where pro.Categoria == categoria
+                               select new
+                               {
+                                   inv.IdProducto,
+                                   Producto = pro.Nombre,
+                                   pro.Categoria,
+                                   StockTeorico = inv.Cantidad,
+                                   StockFisico = 0
+                               };
+
+            // 2️⃣ Productos físicos (con stock teórico inicial 0)
+            var fisicoQuery = from inv in _context.InventarioFisico
+                              where inv.IdTienda == idTienda
+                              join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                              where pro.Categoria == categoria
+                              select new
+                              {
+                                  inv.IdProducto,
+                                  Producto = pro.Nombre,
+                                  pro.Categoria,
+                                  StockTeorico = 0,
+                                  StockFisico = inv.CantidadLeida
+                              };
+
+            // 3️⃣ Unir ambos conjuntos
+            var union = await teoricoQuery
+                .Union(fisicoQuery)
+                .ToListAsync();
+
+            // 4️⃣ Agrupar y consolidar
+            var resultado = union
+                .GroupBy(x => new { x.IdProducto, x.Producto, x.Categoria })
+                .Select(g =>
+                {
+                    var teorico = g.Sum(x => x.StockTeorico);
+                    var fisico = g.Sum(x => x.StockFisico);
+                    return new
+                    {
+                        g.Key.IdProducto,
+                        g.Key.Producto,
+                        g.Key.Categoria,
+                        StockTeorico = teorico,
+                        StockFisico = fisico,
+                        Diferencia = fisico - teorico,
+                        Estado = teorico == 0 && fisico > 0 ? "Adicional" :
+                                 fisico == teorico ? "Coincide" :
+                                 fisico < teorico ? "Faltante" : "Sobrante",
+                        Adicionales = teorico == 0 && fisico > 0 ? fisico : 0
+                    };
+                })
+                .OrderBy(r => r.Producto)
+                .ToList();
+
+            return Ok(resultado);
         }
+
+
+
 
         [HttpPost("cargarTeorico")]
         public async Task<IActionResult> CargarInventarioTeorico([FromServices] IHubContext<NotificationHub> hubContext)
@@ -283,7 +349,63 @@ namespace RFIDInventario.Server.Controllers
 
 
 
-        [HttpGet("/Inventario/detalleProducto/{idTienda}/{idProducto}")]
+        /* [HttpGet("/Inventario/detalleProducto/{idTienda}/{idProducto}")]
+         public async Task<IActionResult> GetDetalleProducto(string idTienda, string idProducto)
+         {
+             var query = from inv in _context.InventarioTeorico
+                         join tie in _context.Tiendas on inv.IdTienda equals tie.Codigo
+                         join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                         join inv2 in _context.InventarioFisico
+                             on new { inv.IdProducto, inv.IdTienda }
+                             equals new { inv2.IdProducto, inv2.IdTienda } into inv2Group
+                         from inv2 in inv2Group.DefaultIfEmpty()
+                         where inv.IdTienda == idTienda && inv.IdProducto == idProducto
+                         select new
+                         {
+                             inv.IdTienda,
+                             Tienda = tie.Nombre,
+                             inv.IdProducto,
+                             Producto = pro.Nombre,
+                             pro.Categoria,
+                             StockTeorico = inv.Cantidad,
+                             StockFisico = inv2 != null ? inv2.CantidadLeida : 0
+                         };
+
+             var detalle = await query.FirstOrDefaultAsync();
+
+             if (detalle == null)
+                 return NotFound(new { mensaje = "Producto no encontrado" });
+
+             // Calcular faltantes, sobrantes y porcentaje
+             int faltantes = detalle.StockTeorico > detalle.StockFisico
+                 ? detalle.StockTeorico - detalle.StockFisico
+                 : 0;
+
+             int sobrantes = detalle.StockFisico > detalle.StockTeorico
+                 ? detalle.StockFisico - detalle.StockTeorico
+                 : 0;
+
+             double progreso = detalle.StockTeorico > 0
+                 ? Math.Round((detalle.StockFisico * 100.0) / detalle.StockTeorico, 2)
+                 : 100;
+
+             return Ok(new
+             {
+                 detalle.IdTienda,
+                 detalle.Tienda,
+                 detalle.IdProducto,
+                 detalle.Producto,
+                 detalle.Categoria,
+                 detalle.StockTeorico,
+                 detalle.StockFisico,
+                 Faltantes = faltantes,
+                 Sobrantes = sobrantes,
+                 Progreso = progreso
+             });
+         }
+        */
+
+        /*[HttpGet("/Inventario/detalleProducto/{idTienda}/{idProducto}")]
         public async Task<IActionResult> GetDetalleProducto(string idTienda, string idProducto)
         {
             var query = from inv in _context.InventarioTeorico
@@ -336,7 +458,165 @@ namespace RFIDInventario.Server.Controllers
                 Sobrantes = sobrantes,
                 Progreso = progreso
             });
+        }*/
+
+        /*[HttpGet("/Inventario/detalleProducto/{idTienda}/{idProducto}")]
+        public async Task<IActionResult> GetDetalleProducto(string idTienda, string idProducto)
+        {
+            //Producto en inventario teórico
+            var teoricoQuery = from inv in _context.InventarioTeorico
+                               where inv.IdTienda == idTienda && inv.IdProducto == idProducto
+                               join tie in _context.Tiendas on inv.IdTienda equals tie.Codigo
+                               join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                               select new
+                               {
+                                   inv.IdTienda,
+                                   Tienda = tie.Nombre,
+                                   inv.IdProducto,
+                                   Producto = pro.Nombre,
+                                   pro.Categoria,
+                                   StockTeorico = inv.Cantidad,
+                                   StockFisico = 0
+                               };
+
+            // Producto en inventario físico por si no existe en terico
+            var fisicoQuery = from inv in _context.InventarioFisico
+                              where inv.IdTienda == idTienda && inv.IdProducto == idProducto
+                              join tie in _context.Tiendas on inv.IdTienda equals tie.Codigo
+                              join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                              select new
+                              {
+                                  inv.IdTienda,
+                                  Tienda = tie.Nombre,
+                                  inv.IdProducto,
+                                  Producto = pro.Nombre,
+                                  pro.Categoria,
+                                  StockTeorico = 0,
+                                  StockFisico = inv.CantidadLeida
+                              };
+
+            // ambos conjuntos
+            var union = await teoricoQuery
+                .Union(fisicoQuery)
+                .ToListAsync();
+
+            if (!union.Any())
+                return NotFound(new { mensaje = "Producto no encontrado en teórico ni físico." });
+
+            //  totales
+            var item = union
+                .GroupBy(x => new { x.IdTienda, x.Tienda, x.IdProducto, x.Producto, x.Categoria })
+                .Select(g =>
+                {
+                    var teorico = g.Sum(x => x.StockTeorico);
+                    var fisico = g.Sum(x => x.StockFisico);
+                    return new
+                    {
+                        g.Key.IdTienda,
+                        g.Key.Tienda,
+                        g.Key.IdProducto,
+                        g.Key.Producto,
+                        g.Key.Categoria,
+                        StockTeorico = teorico,
+                        StockFisico = fisico,
+                        Faltantes = teorico > fisico ? teorico - fisico : 0,
+                        Sobrantes = fisico > teorico ? fisico - teorico : 0,
+                        Adicionales = teorico == 0 && fisico > 0 ? fisico : 0,
+                        Estado = teorico == 0 && fisico > 0 ? "Adicional" :
+                                 teorico == fisico ? "Coincide" :
+                                 fisico < teorico ? "Faltante" : "Sobrante",
+                        Progreso = teorico > 0
+                            ? Math.Round((fisico * 100.0) / teorico, 2)
+                            : 100
+                    };
+                })
+                .FirstOrDefault();
+
+            return Ok(item);
+        }*/
+
+        [HttpGet("/Inventario/detalleProducto/{idTienda}/{idProducto}")]
+        public async Task<IActionResult> GetDetalleProducto(string idTienda, string idProducto)
+        {
+            // Producto en inventario teórico
+            var teoricoQuery = from inv in _context.InventarioTeorico
+                               where inv.IdTienda == idTienda && inv.IdProducto == idProducto
+                               join tie in _context.Tiendas on inv.IdTienda equals tie.Codigo
+                               join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                               select new
+                               {
+                                   inv.IdTienda,
+                                   Tienda = tie.Nombre,
+                                   inv.IdProducto,
+                                   Producto = pro.Nombre,
+                                   pro.Categoria,
+                                   StockTeorico = inv.Cantidad,
+                                   StockFisico = 0
+                               };
+
+            // Producto en inventario físico (por si no existe en teórico)
+            var fisicoQuery = from inv in _context.InventarioFisico
+                              where inv.IdTienda == idTienda && inv.IdProducto == idProducto
+                              join tie in _context.Tiendas on inv.IdTienda equals tie.Codigo
+                              join pro in _context.Productos on inv.IdProducto equals pro.Codigo
+                              select new
+                              {
+                                  inv.IdTienda,
+                                  Tienda = tie.Nombre,
+                                  inv.IdProducto,
+                                  Producto = pro.Nombre,
+                                  pro.Categoria,
+                                  StockTeorico = 0,
+                                  StockFisico = inv.CantidadLeida
+                              };
+
+            // Unimos ambos conjuntos
+            var union = await teoricoQuery
+                .Union(fisicoQuery)
+                .ToListAsync();
+
+            if (!union.Any())
+                return NotFound(new { mensaje = "Producto no encontrado en teórico ni físico." });
+
+            // Calcular totales y estado
+            var item = union
+                .GroupBy(x => new { x.IdTienda, x.Tienda, x.IdProducto, x.Producto, x.Categoria })
+                .Select(g =>
+                {
+                    var teorico = g.Sum(x => x.StockTeorico);
+                    var fisico = g.Sum(x => x.StockFisico);
+
+                    // Identificación de sobrantes vs adicionales
+                    var esAdicional = teorico == 0 && fisico > 0;
+                    var faltantes = teorico > fisico ? teorico - fisico : 0;
+                    var sobrantes = !esAdicional && fisico > teorico ? fisico - teorico : 0;
+                    var adicionales = esAdicional ? fisico : 0;
+
+                    return new
+                    {
+                        g.Key.IdTienda,
+                        g.Key.Tienda,
+                        g.Key.IdProducto,
+                        g.Key.Producto,
+                        g.Key.Categoria,
+                        StockTeorico = teorico,
+                        StockFisico = fisico,
+                        Faltantes = faltantes,
+                        Sobrantes = sobrantes,
+                        Adicionales = adicionales,
+                        Estado = esAdicional ? "Adicional" :
+                                 teorico == fisico ? "Coincide" :
+                                 fisico < teorico ? "Faltante" : "Sobrante",
+                        Progreso = esAdicional ? 0 :
+                                   teorico > 0 ? Math.Round((fisico * 100.0) / teorico, 2) : 100
+                    };
+                })
+                .FirstOrDefault();
+
+            return Ok(item);
         }
+
+
 
 
         /*[HttpPost("reiniciarProducto/{idTienda}/{idProducto}")]
@@ -355,7 +635,7 @@ namespace RFIDInventario.Server.Controllers
             }
         }*/
 
-        
+
 
         [HttpPost("reiniciarProducto/{idTienda}/{idProducto}")]
         public async Task<IActionResult> ReiniciarInventarioProducto(string idTienda, string idProducto,
@@ -376,7 +656,7 @@ namespace RFIDInventario.Server.Controllers
             }
         }
 
-        //*************************************************************************************************
+        //*************************************************************************************************//
 
 
         [HttpGet("tagsProducto/{idTienda}/{idProducto}")]

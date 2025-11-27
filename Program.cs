@@ -34,6 +34,9 @@ builder.Services.AddScoped<InventarioService>();
 builder.Services.AddScoped<ICarga, InventarioService>();
 builder.Services.AddScoped<ProductoService>();
 builder.Services.AddScoped<TiendaService>();
+builder.Services.AddScoped<UsuarioService>();
+builder.Services.AddScoped<UsuarioTiendaService>();
+
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -69,7 +72,8 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 //NotificationHub corriendo
-app.MapHub<NotificationHub>("/notificacionInventarios");
+//app.MapHub<NotificationHub>("/notificacionInventarios");
+app.MapHub<NotificationHub>("/notificationHub");
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseCors("AllowAllOrigins");
