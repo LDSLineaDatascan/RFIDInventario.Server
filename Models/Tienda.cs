@@ -10,6 +10,6 @@ namespace RFIDInventario.Server.Models
         [Required]
         public required string Nombre { get; set; }
         [Required]
-        public required string Estado { get; set; }
+        public required string Estado_Conteo { get; set; }
     }
 }

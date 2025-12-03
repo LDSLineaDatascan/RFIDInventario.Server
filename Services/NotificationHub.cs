@@ -17,14 +17,14 @@ namespace RFIDInventario.Server.Hubs
             await Clients.All.SendAsync("Iniciar", idTienda);
         }
 
-        /*public async Task Cerrar(string idTienda)
+        public async Task Cerrar(string idTienda)
         {
             using var scope = _serviceScopeFactory.CreateScope();
             var inventarioService = scope.ServiceProvider.GetRequiredService<InventarioService>();
             //logica con inventarioService
             inventarioService.Cerrar(idTienda);
             await Clients.All.SendAsync("Cerrar", idTienda);
-        }*/
+        }
 
         public async Task Reiniciar(string idTienda)
         {
@@ -37,13 +37,13 @@ namespace RFIDInventario.Server.Hubs
 
 
         //**********************************************************************
-        /*public async Task EnviarActualizacion(string idTienda, object data)
+        public async Task EnviarActualizacion(string idTienda, object data)
         {
             // Envía los datos de actualización solo al grupo correspondiente a la tienda
             await Clients.Group(idTienda).SendAsync("ActualizarDatos", data);
-        }*/
+        }
 
-        /* public override async Task OnConnectedAsync()
+         public override async Task OnConnectedAsync()
          {
              var httpContext = Context.GetHttpContext();
              var idTienda = httpContext?.Request.Query["idTienda"];
@@ -71,7 +71,7 @@ namespace RFIDInventario.Server.Hubs
 
          //***********************************************************************/
         //conexion grupo tienda
-        public override async Task OnConnectedAsync()
+       /* public override async Task OnConnectedAsync()
         {
             var idTienda = Context.GetHttpContext()?.Request.Query["idTienda"];
 
@@ -95,6 +95,53 @@ namespace RFIDInventario.Server.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
+        */
+       //nov 28
+       /*
+       public override async Task OnConnectedAsync()
+    {
+        var idTienda = Context.GetHttpContext()?.Request.Query["idTienda"];
+
+        if (!string.IsNullOrEmpty(idTienda))
+        {
+            Console.WriteLine($"Cliente conectado y agregado al grupo: {idTienda}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, idTienda);
+        }
+
+        await base.OnConnectedAsync();
+    }*/
+
+    // 🔹 Cuando un cliente se desconecta del hub
+    /*public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var idTienda = Context.GetHttpContext()?.Request.Query["idTienda"];
+
+        if (!string.IsNullOrEmpty(idTienda))
+        {
+            Console.WriteLine($"Cliente desconectado y removido del grupo: {idTienda}");
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, idTienda);
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
+        public async Task JoinGroup(string idTienda)
+        {
+            if (!string.IsNullOrEmpty(idTienda))
+            {
+                await Groups.AddToGroupAsync(Context.ConnectionId, idTienda);
+                Console.WriteLine($"Connection {Context.ConnectionId} se unió al grupo {idTienda}");
+            }
+        }
+
+        public async Task LeaveGroup(string idTienda)
+        {
+            if (!string.IsNullOrEmpty(idTienda))
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, idTienda);
+                Console.WriteLine($"Connection {Context.ConnectionId} salió del grupo {idTienda}");
+            }
+        }*/
 
 
         //*****************************************USUARIOS**************************************************/
@@ -127,7 +174,8 @@ namespace RFIDInventario.Server.Hubs
         //estado
         public async Task EstadoTiendaActualizado(string idTienda, string estado)
         {
-            await Clients.All.SendAsync("EstadoTiendaActualizado", new { idTienda, estado });
+            //await Clients.All.SendAsync("EstadoTiendaActualizado", new { idTienda, estado });
+            await Clients.Group(idTienda).SendAsync("EstadoTiendaActualizado", new { idTienda, estado });
         }
 
     }

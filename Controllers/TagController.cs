@@ -17,63 +17,73 @@ namespace RFIDInventario.Server.Controllers
             _context = context;
         }
 
+        // insertar
         [HttpPost("{idTienda}")]
         public async Task<IActionResult> InsertTag(string idTienda, [FromBody] TagRequest request)
         {
             try
             {
+                //VALIDACION ENTRADA
+                if (request == null)
+                    return BadRequest(new { Message = "Solicitud inválida, no se recibió JSON." });
 
-                //validadcion de entrada
-                if(string.IsNullOrWhiteSpace(request.Tag) || string.IsNullOrWhiteSpace(request.Ean))
+                if (string.IsNullOrWhiteSpace(request.Tag) ||
+                    string.IsNullOrWhiteSpace(request.Ean))
                 {
                     return BadRequest(new { Message = "Tag y EAN son obligatorios." });
                 }
 
-                //valido estado de la tienda
-                var estado= await _context.Tiendas
+                // -------- VALIDAR EXISTENCIA DE TIENDA --------
+                var estado = await _context.Tiendas
                     .Where(t => t.Codigo == idTienda)
-                    .Select(t => t.Estado)
+                    .Select(t => t.Estado_Conteo)
                     .FirstOrDefaultAsync();
 
-                if(!string.IsNullOrEmpty(estado) &&
-                    (estado.Equals("Cerrar", StringComparison.OrdinalIgnoreCase) ||
-                    estado.Equals("Cerrado", StringComparison.OrdinalIgnoreCase)))
-                    {
-                    //rechazo la escritura
-                        return StatusCode(423, new { mensaje = "Tienda cerrada: no se permiten lecturas." });
-                    }
+                if (estado == null)
+                {
+                    return NotFound(new { Message = $"La tienda {idTienda} no existe." });
+                }
 
+                // -------- VALIDAR ESTADO --------
+                if (estado.Equals("Cerrado", StringComparison.OrdinalIgnoreCase))
+                {
+                    return StatusCode(423, new { Message = "Tienda cerrada: no se permiten lecturas." });
+                }
 
+                // -------- EJECUTAR PROCEDIMIENTO --------
                 await _context.Database.ExecuteSqlRawAsync(
                     "EXEC INSERTAR_TAG_ACTUALIZADO_INVENTARIO @ID_TIENDA, @TAG, @EAN",
                     new SqlParameter("@ID_TIENDA", idTienda),
                     new SqlParameter("@TAG", request.Tag),
-                    new SqlParameter("@EAN", request.Ean));
+                    new SqlParameter("@EAN", request.Ean)
+                );
 
-                Console.WriteLine("Procedimiento ejecutado correctamente.");
-                return Ok(new { Message = "Procedimiento ejecutado correctamente." });
+                Console.WriteLine($"TAG registrado correctamente: TAG={request.Tag}, EAN={request.Ean}, tienda={idTienda}");
+
+                return Ok(new { Message = "TAG registrado correctamente." });
             }
             catch (Exception ex)
             {
-                var errorResponse = new
+                Console.WriteLine($"Error al insertar TAG: {ex.Message}");
+
+                return StatusCode(500, new
                 {
-                    StatusCode = 400,
-                    Error = "Error al procesar la solicitud",
-                    Message = ex.Message
-                };
-                Console.WriteLine($"Error al ejecutar el procedimiento: {ex.Message}");
-                return BadRequest(errorResponse);
+                    Message = "Error al procesar la solicitud.",
+                    Detail = ex.Message
+                });
             }
         }
 
+        //get tags idTienda
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<TagTienda>>> GetTags([FromQuery] string? idTienda=null)
+        public async Task<ActionResult<IEnumerable<TagTienda>>> GetTags([FromQuery] string? idTienda = null)
         {
-            if(string.IsNullOrEmpty(idTienda))
+            if (string.IsNullOrEmpty(idTienda))
             {
                 return await _context.TagTienda.ToListAsync();
             }
-            var tags= await _context.TagTienda
+
+            var tags = await _context.TagTienda
                 .Where(t => t.IdTienda == idTienda)
                 .ToListAsync();
 
