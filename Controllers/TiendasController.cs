@@ -154,8 +154,7 @@ namespace RFIDInventario.Server.Controllers
                     await _hubContext.Clients.All.SendAsync("Iniciar", idTienda);
                 }
 
-                // --- FALLBACK TEMPORAL: enviar a ALL para verificar si el cliente recibe algo ---
-                // Úsalo solo para debugging; quítalo cuando confirmemos que el cliente está en el grupo.
+                // --- FALLBACK TEMPORAL
                 //Console.WriteLine($"[SignalR] Envío fallback a Clients.All.Cerrar (DEBUG)");
                 //await _hubContext.Clients.All.SendAsync("Cerrar", idTienda);
             }
@@ -176,7 +175,7 @@ namespace RFIDInventario.Server.Controllers
 
 
 
-        // GET: /tiendas/{idTienda}/estado
+        // swagger GET: /tiendas/{idTienda}/estado 
         [HttpGet("{idTienda}/estado")]
         public async Task<IActionResult> GetEstadoTienda(string idTienda)
         {
