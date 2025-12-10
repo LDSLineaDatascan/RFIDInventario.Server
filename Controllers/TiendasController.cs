@@ -161,10 +161,8 @@ namespace RFIDInventario.Server.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"[SignalR ERROR] al enviar notificación: {ex}");
-                ///evito que se crash la api por notificacion
+                //evito que se crash la api por notificacion
             }
-
-
 
             return Ok(new
             {
@@ -172,7 +170,6 @@ namespace RFIDInventario.Server.Controllers
                 Tienda = tienda
             });
         }
-
 
 
         // swagger GET: /tiendas/{idTienda}/estado 
