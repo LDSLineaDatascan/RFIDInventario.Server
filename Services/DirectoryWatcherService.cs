@@ -130,12 +130,13 @@ namespace RFIDInventario.Server.Services
                         break;
                 }
 
-                //*****************************************************************
+                //******************************************************************************************
+                //***validacion de estado, todas cerradas
                 if (string.Equals(modo, "inventario_teorico", StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
-                        // Leer todas las líneas (saltando líneas vacías)
+                        // Leo todas las líneas y salto las vacías
                         var lines = File.ReadAllLines(e.FullPath)
                                         .Where(l => !string.IsNullOrWhiteSpace(l))
                                         .ToArray();
@@ -143,7 +144,7 @@ namespace RFIDInventario.Server.Services
                         if (lines.Length == 0)
                         {
                             Console.WriteLine("Archivo vacío: " + e.FullPath);
-                            // mover a rechazados para análisis
+                            // muevo a rechazados
                             MoveToRejected(e.FullPath, "Archivo vacío");
                             await _hubContext.Clients.All.SendAsync("InventarioRechazado", new { archivo = e.Name, razon = "Archivo vacío" });
                             return;
@@ -227,6 +228,7 @@ namespace RFIDInventario.Server.Services
 
                             return; // no procesar
                         }
+
                     }
                     catch (Exception ex)
                     {
@@ -238,28 +240,42 @@ namespace RFIDInventario.Server.Services
                 }
 
                 //******************************************************************
+                // ⚠️ IMPORTANTE: Solo llamar CargaCsv si NO es inventario_teorico
+                // El procedimiento almacenado CARGAR_INVENTARIO_TEORICO ya hace el BULK INSERT
+                if (!string.Equals(modo, "inventario_teorico", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 1️⃣ Procesar CSV para otros archivos (productos, tiendas, etc.)
+                    fileSettings.Service?.CargaCsv(e.FullPath, fileSettings.FileSeparator, fileSettings.FileParams);
+                }
+                else
+                {
+                    Console.WriteLine("Saltando CargaCsv para inventario_teorico - el procedimiento almacenado maneja la carga");
+                }
 
-                // 1️⃣ Procesar CSV
-                fileSettings.Service?.CargaCsv(e.FullPath, fileSettings.FileSeparator, fileSettings.FileParams);
-
-                // 2️⃣ Ejecutar el procedimiento almacenado
-                await dbContext.Database.ExecuteSqlRawAsync("EXEC CARGAR_INVENTARIO_TEORICO");
+                // 2️⃣ Ejecutar el procedimiento almacenado (solo para inventario_teorico)
+                if (string.Equals(modo, "inventario_teorico", StringComparison.OrdinalIgnoreCase))
+                {
+                    await dbContext.Database.ExecuteSqlRawAsync("EXEC CARGAR_INVENTARIO_TEORICO");
+                    Console.WriteLine("Procedimiento almacenado CARGAR_INVENTARIO_TEORICO ejecutado exitosamente");
+                }
 
                 // 3️⃣ Mover el archivo a una carpeta de respaldo
-                var backupDir = Path.Combine(Path.GetDirectoryName(e.FullPath), "Procesados");
+                var backupDir = Path.Combine(Path.GetDirectoryName(e.FullPath) ?? ".", "Procesados");
                 if (!Directory.Exists(backupDir))
                     Directory.CreateDirectory(backupDir);
 
                 var backupPath = Path.Combine(backupDir, Path.GetFileName(e.FullPath));
                 File.Move(e.FullPath, backupPath, overwrite: true);
-
-                // 4️⃣ Notificar a todos los clientes
-                await _hubContext.Clients.All.SendAsync("InventarioActualizado");
                 Console.WriteLine($"Archivo movido a: {backupPath}");
-                Console.WriteLine("Inventario actualizado automáticamente por cambio en inventario_teorico.csv");
+
+                // 4️⃣ Notificar a todos los clientes (solo para inventario_teorico)
+                if (string.Equals(modo, "inventario_teorico", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _hubContext.Clients.All.SendAsync("InventarioActualizado");
+                    Console.WriteLine("Inventario actualizado automáticamente por cambio en inventario_teorico.csv");
+                }
             }
         }
-
 
 
 
