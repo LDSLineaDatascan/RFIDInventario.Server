@@ -65,7 +65,7 @@ namespace RFIDInventario.Server.Services
 
                 foreach (var item in tiendas)
                 {
-                    item.Estado = "";
+                    item.Estado_Conteo = "";
                 }
 
                 _context.RemoveRange(inventario);
@@ -86,7 +86,7 @@ namespace RFIDInventario.Server.Services
                 var tienda = _context.Tiendas.Find(idTienda);
                 if (tienda != null)
                 {
-                    tienda.Estado = "Cerrado";
+                    tienda.Estado_Conteo = "Cerrado";
                     _context.SaveChanges();
                 }
             }

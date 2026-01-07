@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using RFIDInventario.Server.Data;
 using RFIDInventario.Server.Models;
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.SignalR;
+using RFIDInventario.Server.Hubs;
 
 namespace RFIDInventario.Server.Controllers
 {
@@ -11,10 +13,12 @@ namespace RFIDInventario.Server.Controllers
     public class TagController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public TagController(AppDbContext context)
+        public TagController(AppDbContext context, IHubContext<NotificationHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         [HttpPost("{idTienda}")]
@@ -56,6 +60,8 @@ namespace RFIDInventario.Server.Controllers
                     new SqlParameter("@TAG", request.Tag),
                     new SqlParameter("@EAN", request.Ean)
                 );
+                //actualizar adicionales
+                await _hubContext.Clients.All.SendAsync("InventarioActualizado", idTienda);
 
                 Console.WriteLine($"TAG registrado correctamente: TAG={request.Tag}, EAN={request.Ean}, tienda={idTienda}");
 

@@ -45,7 +45,7 @@ namespace RFIDInventario.Server.Services
                 {
                     Codigo = (string)dictionary["Codigo"],
                     Nombre = (string)dictionary["Nombre"],
-                    Estado = (string)dictionary["Estado"]
+                    Estado_Conteo = (string)dictionary["Estado"]
                     //Estado=""->Estado segun video
                 };
 
