@@ -55,13 +55,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins", policy =>
     {
-        //policy.SetIsOriginAllowed(origin => true) // permitir cualquier origen
+        //policy.SetIsOriginAllowed(origin => true) // permitio cualquier origen
         policy.WithOrigins(
                 "http://localhost:4200",
                 "https://localhost:4200",
                 "http://localhost:80",
                 "http://localhost:93",
                 "http://rfid.local.io:80",
+                "http://rfid.local.io:93",
+                "http://localhost/rfid:97",
                 "http://rfid.local.io:93"
             )
             .AllowAnyMethod()

@@ -92,5 +92,35 @@ namespace RFIDInventario.Server.Controllers
 
             return Ok(tags);
         }
+
+        [HttpGet("por-ean/{idTienda}/{ean}")]
+        public async Task<IActionResult> GetTagsPorEan(string idTienda, string ean)
+        {
+            if (string.IsNullOrWhiteSpace(ean))
+                return BadRequest(new { Message = "EAN requerido." });
+
+            ean = ean.Trim();
+            idTienda = idTienda.Trim();
+
+            var resultado = await (
+                from tag in _context.TagTienda
+                join prod in _context.Productos
+                    on tag.Ean.Trim() equals prod.Codigo.Trim()
+                where tag.IdTienda.Trim() == idTienda
+                      && tag.Ean.Trim() == ean
+                select new
+                {
+                    epc = tag.Tag,
+                    nombreProducto = prod.Nombre
+                }
+            )
+            .Distinct()
+            .ToListAsync();
+
+            if (!resultado.Any())
+                return NotFound(new { Message = "No se encontraron tags para este EAN." });
+
+            return Ok(resultado);
+        }
     }
 }
